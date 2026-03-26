@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Crown } from "lucide-react";
+import { Crown, Play, Square } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 
@@ -7,6 +7,7 @@ export default function Search() {
   const navigate = useNavigate();
   const [chains, setChains] = useState<string[]>([]);
   const [isVip, setIsVip] = useState(false);
+  const [isRunning, setIsRunning] = useState(false);
 
   useEffect(() => {
     if (!localStorage.getItem("brute-activation-key")) {
@@ -61,10 +62,40 @@ export default function Search() {
             </div>
           )}
 
+          {/* Controls */}
+          <div className="flex items-center gap-3 mb-6">
+            {!isRunning ? (
+              <button
+                type="button"
+                onClick={() => setIsRunning(true)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-foreground text-background text-sm font-semibold hover:opacity-80 active:scale-95 transition-all"
+              >
+                <Play size={14} />
+                Start
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setIsRunning(false)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full border border-border text-foreground text-sm font-semibold hover:bg-card active:scale-95 transition-all"
+              >
+                <Square size={14} />
+                Stop
+              </button>
+            )}
+            {isRunning && (
+              <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span className="w-2 h-2 rounded-full bg-foreground animate-pulse" />
+                Running
+              </span>
+            )}
+          </div>
+
           <div className="p-6 sm:p-10 bg-card rounded-2xl border border-border flex flex-col items-center justify-center min-h-[300px] text-center">
             <p className="text-sm text-muted-foreground">
-              Scanner is active. Results will appear here when wallets are
-              found.
+              {isRunning
+                ? "Scanner is active. Results will appear here when wallets are found."
+                : "Press Start to begin scanning."}
             </p>
           </div>
         </motion.div>
