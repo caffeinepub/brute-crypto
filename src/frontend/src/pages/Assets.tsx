@@ -9,7 +9,6 @@ interface WalletAsset {
   address: string;
   chain: string;
   balance: string;
-  status: "Active" | "Inactive";
 }
 
 function fixBalance(balance: string, chainTicker: string): string {
@@ -119,7 +118,6 @@ export default function Assets() {
             address: w.address,
             chain: w.chain,
             balance: fixBalance(w.balance, w.chain),
-            status: Math.random() > 0.5 ? "Active" : "Inactive",
           }),
         );
         setAssets(mapped);
@@ -144,8 +142,8 @@ export default function Assets() {
 
   const handleExport = () => {
     const rows = [
-      ["Address", "Chain", "Balance", "Status"],
-      ...filtered.map((a) => [a.address, a.chain, a.balance, a.status]),
+      ["Address", "Chain", "Balance"],
+      ...filtered.map((a) => [a.address, a.chain, a.balance]),
     ];
     const csv = rows.map((r) => r.join(",")).join("\n");
     const blob = new Blob([csv], { type: "text/csv" });
@@ -254,7 +252,7 @@ export default function Assets() {
             </button>
           </div>
 
-          {/* Assets table — not scrollable vertically, scrollable horizontally on small screens */}
+          {/* Assets table */}
           <div className="bg-card rounded-2xl border border-border overflow-hidden">
             {filtered.length === 0 ? (
               <div className="p-12 text-center" data-ocid="assets.empty_state">
@@ -265,7 +263,7 @@ export default function Assets() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full min-w-[480px]">
+                <table className="w-full min-w-[400px]">
                   <thead>
                     <tr className="border-b border-border">
                       <th className="text-left px-4 sm:px-5 py-4 text-xs font-semibold text-muted-foreground">
@@ -276,9 +274,6 @@ export default function Assets() {
                       </th>
                       <th className="text-left px-4 sm:px-5 py-4 text-xs font-semibold text-muted-foreground">
                         Balance
-                      </th>
-                      <th className="text-left px-4 sm:px-5 py-4 text-xs font-semibold text-muted-foreground">
-                        Status
                       </th>
                     </tr>
                   </thead>
@@ -305,24 +300,6 @@ export default function Assets() {
                         </td>
                         <td className="px-4 sm:px-5 py-4 text-sm font-semibold text-foreground tabular-nums whitespace-nowrap">
                           {asset.balance}
-                        </td>
-                        <td className="px-4 sm:px-5 py-4">
-                          <span
-                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${
-                              asset.status === "Active"
-                                ? "border-border text-foreground bg-accent"
-                                : "border-border text-muted-foreground"
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full inline-block mr-1.5 ${
-                                asset.status === "Active"
-                                  ? "bg-foreground/70"
-                                  : "bg-muted-foreground/40"
-                              }`}
-                            />
-                            {asset.status}
-                          </span>
                         </td>
                       </tr>
                     ))}
