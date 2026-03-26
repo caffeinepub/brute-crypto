@@ -3,15 +3,10 @@ import { motion } from "motion/react";
 import type React from "react";
 
 type FallingPatternProps = React.ComponentProps<"div"> & {
-  /** Primary color of the falling elements (default: 'var(--primary)') */
   color?: string;
-  /** Background color (default: 'var(--background)') */
   backgroundColor?: string;
-  /** Animation duration in seconds (default: 150) */
   duration?: number;
-  /** @deprecated No longer used */
   blurIntensity?: string;
-  /** Pattern density - affects spacing (default: 1) */
   density?: number;
 };
 
@@ -19,6 +14,8 @@ export function FallingPattern({
   color = "var(--primary)",
   backgroundColor = "var(--background)",
   duration = 150,
+  blurIntensity = "1em",
+  density = 1,
   className,
 }: FallingPatternProps) {
   const generateBackgroundImage = () => {
@@ -140,6 +137,14 @@ export function FallingPattern({
           animate="animate"
         />
       </motion.div>
+      <div
+        className="absolute inset-0 z-10"
+        style={{
+          backdropFilter: `blur(${blurIntensity})`,
+          backgroundImage: `radial-gradient(circle at 50% 50%, transparent 0, transparent 2px, ${backgroundColor} 2px)`,
+          backgroundSize: `${8 * density}px ${8 * density}px`,
+        }}
+      />
     </div>
   );
 }
