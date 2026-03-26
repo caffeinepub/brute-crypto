@@ -12,13 +12,12 @@ export default function AnimatedBackground() {
     <div
       aria-hidden="true"
       className="fixed inset-0 z-0 pointer-events-none overflow-hidden"
+      style={{ willChange: "transform", transform: "translateZ(0)" }}
     >
       <FallingPattern
         color={fg}
         backgroundColor={bg}
         duration={150}
-        blurIntensity="1em"
-        density={1}
         className="absolute inset-0 h-full w-full [mask-image:radial-gradient(ellipse_at_center,transparent_10%,black_80%)]"
       />
     </div>
