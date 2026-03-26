@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { AlertCircle, KeyRound } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
+import { validateKey } from "../lib/keys";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -9,18 +10,27 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const handleActivate = () => {
-    if (key.toLowerCase() === "brutecryptoadm") {
-      localStorage.setItem("brute-activation-key", key);
+    const trimmed = key.trim();
+    const result = validateKey(trimmed);
+
+    if (result.type === "invalid") {
+      setError("Invalid activation key. Please check your key and try again.");
+      return;
+    }
+
+    localStorage.setItem("brute-activation-key", trimmed);
+
+    if (result.type === "master") {
       localStorage.setItem("brute-master-key", "true");
-      navigate({ to: "/select-chain" });
-      return;
+      localStorage.removeItem("brute-key-chains");
+    } else if (result.type === "all") {
+      localStorage.setItem("brute-master-key", "all");
+      localStorage.removeItem("brute-key-chains");
+    } else if (result.type === "chain") {
+      localStorage.removeItem("brute-master-key");
+      localStorage.setItem("brute-key-chains", JSON.stringify([result.chain]));
     }
-    if (key.length < 8) {
-      setError("Key must be at least 8 characters");
-      return;
-    }
-    localStorage.setItem("brute-activation-key", key);
-    localStorage.removeItem("brute-master-key");
+
     navigate({ to: "/select-chain" });
   };
 
@@ -37,7 +47,6 @@ export default function Login() {
         className="w-full max-w-md"
       >
         <div className="p-8 bg-card rounded-2xl border border-border">
-          {/* Key icon accent */}
           <div className="flex justify-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center">
               <KeyRound size={24} className="text-foreground" />
@@ -61,14 +70,14 @@ export default function Login() {
               </label>
               <input
                 id="activation-key"
-                type="text"
+                type="password"
                 value={key}
                 onChange={(e) => {
                   setKey(e.target.value);
                   setError("");
                 }}
                 onKeyDown={handleKeyDown}
-                placeholder="Enter 8+ character key"
+                placeholder="Enter your activation key"
                 data-ocid="login.input"
                 autoComplete="off"
                 className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"

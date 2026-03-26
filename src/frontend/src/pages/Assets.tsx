@@ -3,24 +3,13 @@ import { Coins, Download, TrendingUp, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { WithdrawalModal } from "../components/WithdrawalModal";
-import {
-  CHAIN_CONFIG,
-  ChainLogo,
-  parseBalanceUSD,
-  randomBalance,
-} from "../lib/chains";
+import { CHAIN_CONFIG, ChainLogo, parseBalanceUSD } from "../lib/chains";
 
 interface WalletAsset {
   address: string;
   chain: string;
   balance: string;
   status: "Active" | "Inactive";
-}
-
-function mockBalance(chainTicker: string): string {
-  const cfg = CHAIN_CONFIG.find((c) => c.ticker === chainTicker);
-  if (!cfg) return "0.0000 ???";
-  return randomBalance(cfg);
 }
 
 function fixBalance(balance: string, chainTicker: string): string {
@@ -31,59 +20,8 @@ function fixBalance(balance: string, chainTicker: string): string {
   ) {
     return balance;
   }
-  return mockBalance(chainTicker);
+  return `${parts[0]} ${chainTicker}`;
 }
-
-const MOCK_ASSETS: WalletAsset[] = [
-  {
-    address: "0x742d35Cc6634C0532925a3b8D4C9C7eBA6b2Fc3d",
-    chain: "ETH",
-    balance: mockBalance("ETH"),
-    status: "Active",
-  },
-  {
-    address: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh",
-    chain: "BTC",
-    balance: mockBalance("BTC"),
-    status: "Active",
-  },
-  {
-    address: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
-    chain: "ETH",
-    balance: mockBalance("ETH"),
-    status: "Inactive",
-  },
-  {
-    address: "So11111111111111111111111111111111111111112",
-    chain: "SOL",
-    balance: mockBalance("SOL"),
-    status: "Active",
-  },
-  {
-    address: "0x71C7656EC7ab88b098defB751B7401B5f6d8976F",
-    chain: "BNB",
-    balance: mockBalance("BNB"),
-    status: "Inactive",
-  },
-  {
-    address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-    chain: "MATIC",
-    balance: mockBalance("MATIC"),
-    status: "Active",
-  },
-  {
-    address: "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7",
-    chain: "AVAX",
-    balance: mockBalance("AVAX"),
-    status: "Inactive",
-  },
-  {
-    address: "TKFLpv822a3Dqypa4XvFRMEzCzSGSCsWxG",
-    chain: "TRX",
-    balance: mockBalance("TRX"),
-    status: "Active",
-  },
-];
 
 function getChainLogoId(ticker: string): string {
   const found = CHAIN_CONFIG.find((c) => c.ticker === ticker);
@@ -184,12 +122,12 @@ export default function Assets() {
             status: Math.random() > 0.5 ? "Active" : "Inactive",
           }),
         );
-        setAssets(mapped.length > 0 ? mapped : MOCK_ASSETS);
+        setAssets(mapped);
       } catch {
-        setAssets(MOCK_ASSETS);
+        setAssets([]);
       }
     } else {
-      setAssets(MOCK_ASSETS);
+      setAssets([]);
     }
   }, [navigate]);
 
@@ -321,7 +259,8 @@ export default function Assets() {
             {filtered.length === 0 ? (
               <div className="p-12 text-center" data-ocid="assets.empty_state">
                 <p className="text-muted-foreground text-sm">
-                  No assets found for this filter.
+                  No assets found. Run a scan on the Search page to discover
+                  wallets.
                 </p>
               </div>
             ) : (

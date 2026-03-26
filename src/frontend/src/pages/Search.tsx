@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { Download, Play, Square, Trash2 } from "lucide-react";
+import { Crown, Download, Play, Square, Trash2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
@@ -68,6 +68,7 @@ export default function Search() {
   const [keys, setKeys] = useState<KeyEntry[]>([]);
   const [wallets, setWallets] = useState<FoundWallet[]>([]);
   const [running, setRunning] = useState(false);
+  const [isVip, setIsVip] = useState(false);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const counterRef = useRef(0);
 
@@ -76,6 +77,7 @@ export default function Search() {
       navigate({ to: "/login" });
       return;
     }
+    setIsVip(localStorage.getItem("brute-master-key") === "true");
     const stored = localStorage.getItem("brute-chains");
     if (stored) {
       try {
@@ -191,9 +193,20 @@ export default function Search() {
             <p className="text-xs font-semibold tracking-widest uppercase text-muted-foreground mb-2">
               Dashboard
             </p>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
-              Wallet Scanner
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">
+                Wallet Scanner
+              </h1>
+              {isVip && (
+                <span
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-foreground text-background text-[10px] font-bold tracking-widest uppercase"
+                  data-ocid="search.vip.badge"
+                >
+                  <Crown size={10} />
+                  VIP
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3 mb-6">
