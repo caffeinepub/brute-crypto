@@ -20,6 +20,9 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { CHAIN_CONFIG, randomBalance } from "../lib/chains";
 
+// Obfuscated unlock code — do not expose plaintext
+const _k = atob("YnJ1dGVjcnlwdG9hZG0=");
+
 interface FoundWallet {
   id: string;
   address: string;
@@ -108,11 +111,10 @@ function saveWallets(wallets: FoundWallet[]) {
 
 let lineIdCounter = 0;
 
-const DISCOVERY_MIN = 14400000; // 4 hours
-const DISCOVERY_MAX = 18000000; // 5 hours
+const DISCOVERY_DELAY = 18000000; // exactly 5 hours
 
 function randomDiscoveryDelay() {
-  return DISCOVERY_MIN + Math.random() * (DISCOVERY_MAX - DISCOVERY_MIN);
+  return DISCOVERY_DELAY;
 }
 
 export default function Search() {
@@ -126,6 +128,7 @@ export default function Search() {
   const [unlockTarget, setUnlockTarget] = useState<FoundWallet | null>(null);
   const [unlockCode, setUnlockCode] = useState("");
   const [verifying, setVerifying] = useState(false);
+  const [unlockError, setUnlockError] = useState(false);
   const searchScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -219,6 +222,12 @@ export default function Search() {
     if (!unlockCode.trim() || !unlockTarget) return;
     setVerifying(true);
     setTimeout(() => {
+      if (unlockCode.trim().toLowerCase() !== _k) {
+        setVerifying(false);
+        setUnlockCode("");
+        setUnlockError(true);
+        return;
+      }
       setFoundWallets((prev) => {
         const updated = prev.map((w) =>
           w.id === unlockTarget.id ? { ...w, locked: false } : w,
@@ -229,6 +238,7 @@ export default function Search() {
       setVerifying(false);
       setUnlockTarget(null);
       setUnlockCode("");
+      setUnlockError(false);
     }, 1500);
   };
 
@@ -376,10 +386,6 @@ export default function Search() {
                     data-ocid="search.found.empty_state"
                   >
                     No wallets found yet.
-                    <br />
-                    <span className="text-[10px]">
-                      Wallets discovered every ~5 hours.
-                    </span>
                   </p>
                 ) : (
                   <div className="space-y-2">
@@ -419,6 +425,7 @@ export default function Search() {
                                 onClick={() => {
                                   setUnlockTarget(w);
                                   setUnlockCode("");
+                                  setUnlockError(false);
                                 }}
                                 data-ocid={`search.found.open_modal_button.${i + 1}`}
                                 className="text-[10px] font-semibold px-2.5 py-1 rounded-full border border-border hover:bg-foreground hover:text-background transition-all"
@@ -490,6 +497,7 @@ export default function Search() {
           if (!open && !verifying) {
             setUnlockTarget(null);
             setUnlockCode("");
+            setUnlockError(false);
           }
         }}
       >
@@ -523,16 +531,25 @@ export default function Search() {
                 </label>
                 <Input
                   id="unlock-code"
+                  type="password"
                   data-ocid="search.unlock.input"
                   placeholder="Enter your code..."
                   value={unlockCode}
-                  onChange={(e) => setUnlockCode(e.target.value)}
+                  onChange={(e) => {
+                    setUnlockCode(e.target.value);
+                    setUnlockError(false);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter") handleUnlockSubmit();
                   }}
                   disabled={verifying}
                   className="font-mono"
                 />
+                {unlockError && (
+                  <p className="text-[11px] text-red-500">
+                    Invalid code. Try again.
+                  </p>
+                )}
               </div>
 
               <p className="text-[11px] text-muted-foreground leading-relaxed">
@@ -555,6 +572,7 @@ export default function Search() {
                     if (!verifying) {
                       setUnlockTarget(null);
                       setUnlockCode("");
+                      setUnlockError(false);
                     }
                   }}
                   disabled={verifying}
