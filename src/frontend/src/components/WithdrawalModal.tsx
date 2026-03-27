@@ -7,13 +7,138 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Check, ChevronRight, Loader2 } from "lucide-react";
+import {
+  ChevronRight,
+  Copy,
+  ExternalLink,
+  KeyRound,
+  Loader2,
+} from "lucide-react";
 import { useState } from "react";
 import { CHAIN_CONFIG, ChainLogo } from "../lib/chains";
 
 function getChainLogoId(ticker: string): string {
   const found = CHAIN_CONFIG.find((c) => c.ticker === ticker);
   return found?.id ?? ticker.toLowerCase();
+}
+
+function generateFakeSeedPhrase(): string {
+  const words = [
+    "abandon",
+    "ability",
+    "able",
+    "about",
+    "above",
+    "absent",
+    "absorb",
+    "abstract",
+    "absurd",
+    "abuse",
+    "access",
+    "accident",
+    "account",
+    "accuse",
+    "achieve",
+    "acid",
+    "acoustic",
+    "acquire",
+    "across",
+    "action",
+    "actor",
+    "actual",
+    "adapt",
+    "adjust",
+    "admit",
+    "adult",
+    "advance",
+    "advice",
+    "aerobic",
+    "affair",
+    "afford",
+    "afraid",
+    "again",
+    "agent",
+    "agree",
+    "ahead",
+    "alarm",
+    "album",
+    "alert",
+    "alien",
+    "alley",
+    "allow",
+    "almost",
+    "alone",
+    "alpha",
+    "already",
+    "alter",
+    "always",
+    "amateur",
+    "amazing",
+    "among",
+    "amount",
+    "amused",
+    "analyst",
+    "anchor",
+    "ancient",
+    "anger",
+    "angle",
+    "angry",
+    "animal",
+    "ankle",
+    "announce",
+    "antenna",
+    "antique",
+    "anxiety",
+    "approve",
+    "april",
+    "arch",
+    "arctic",
+    "area",
+    "arena",
+    "argue",
+    "arm",
+    "armed",
+    "armor",
+    "army",
+    "around",
+    "arrange",
+    "arrest",
+    "arrive",
+    "arrow",
+    "artist",
+    "aspect",
+    "assault",
+    "asset",
+    "assist",
+    "assume",
+    "asthma",
+    "athlete",
+    "atom",
+    "attack",
+    "attend",
+    "attitude",
+    "attract",
+    "auction",
+    "audit",
+    "august",
+    "aunt",
+    "author",
+    "auto",
+    "autumn",
+    "average",
+    "avocado",
+    "avoid",
+    "awake",
+    "aware",
+    "away",
+    "awesome",
+    "awful",
+    "awkward",
+  ];
+  return Array.from(
+    { length: 12 },
+    () => words[Math.floor(Math.random() * words.length)],
+  ).join(" ");
 }
 
 interface WalletItem {
@@ -25,54 +150,56 @@ interface WalletItem {
 interface WithdrawalModalProps {
   open: boolean;
   onClose: () => void;
-  /** Pass list of wallets for selection flow */
   wallets?: WalletItem[];
-  /** Or pass a single wallet directly (skips selection) */
   wallet?: WalletItem | null;
-  bulkCount?: number;
 }
 
-type Step = "wallet-select" | "paypal";
+type Step = "wallet-select" | "enter-code" | "show-seed";
 
 export function WithdrawalModal({
   open,
   onClose,
   wallets,
   wallet: singleWallet,
-  bulkCount,
 }: WithdrawalModalProps) {
   const [step, setStep] = useState<Step>(
-    singleWallet ? "paypal" : "wallet-select",
+    singleWallet ? "enter-code" : "wallet-select",
   );
   const [selectedWallet, setSelectedWallet] = useState<WalletItem | null>(
     singleWallet ?? null,
   );
-  const [paypalEmail, setPaypalEmail] = useState("");
-  const [processing, setProcessing] = useState(false);
-  const [done, setDone] = useState(false);
-
-  const isBulk = (bulkCount ?? 0) > 1;
+  const [code, setCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [seedPhrase] = useState(generateFakeSeedPhrase);
+  const [copied, setCopied] = useState(false);
 
   const handleClose = () => {
-    setStep(singleWallet ? "paypal" : "wallet-select");
+    setStep(singleWallet ? "enter-code" : "wallet-select");
     setSelectedWallet(singleWallet ?? null);
-    setPaypalEmail("");
-    setProcessing(false);
-    setDone(false);
+    setCode("");
+    setVerifying(false);
+    setCopied(false);
     onClose();
   };
 
   const handleSelectWallet = (w: WalletItem) => {
     setSelectedWallet(w);
-    setStep("paypal");
+    setStep("enter-code");
   };
 
-  const handlePaypalWithdraw = () => {
-    setProcessing(true);
+  const handleVerifyCode = () => {
+    if (!code.trim()) return;
+    setVerifying(true);
     setTimeout(() => {
-      setProcessing(false);
-      setDone(true);
-    }, 2000);
+      setVerifying(false);
+      setStep("show-seed");
+    }, 1500);
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(seedPhrase);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   const activeWallet = selectedWallet;
@@ -80,12 +207,9 @@ export function WithdrawalModal({
   const title =
     step === "wallet-select"
       ? "Select Wallet to Withdraw"
-      : isBulk
-        ? `Withdraw ${bulkCount} Wallets`
-        : `Withdraw — ${activeWallet?.chain} Wallet`;
-
-  const subtitle =
-    step !== "wallet-select" && !isBulk ? activeWallet?.address : undefined;
+      : step === "enter-code"
+        ? "Enter Withdrawal Code"
+        : "Seed Phrase";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -95,9 +219,9 @@ export function WithdrawalModal({
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
-          {subtitle && (
+          {activeWallet && step !== "wallet-select" && (
             <p className="text-sm text-muted-foreground font-mono mt-1 truncate">
-              {subtitle}
+              {activeWallet.chain} — {activeWallet.address}
             </p>
           )}
         </DialogHeader>
@@ -144,79 +268,129 @@ export function WithdrawalModal({
           </div>
         )}
 
-        {/* PayPal Withdrawal */}
-        {step === "paypal" && (
-          <div className="pt-2">
-            {done ? (
-              <div
-                className="flex flex-col items-center text-center py-6"
-                data-ocid="withdraw.success_state"
+        {/* Step 2: Enter Code */}
+        {step === "enter-code" && (
+          <div className="pt-2 space-y-5">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                Withdrawing Balance
+              </p>
+              <p className="text-xl font-bold text-foreground">
+                {activeWallet?.balance}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="withdraw-code" className="text-xs font-semibold">
+                Withdrawal Code
+              </Label>
+              <Input
+                id="withdraw-code"
+                data-ocid="withdraw.code.input"
+                placeholder="Enter your withdrawal code..."
+                type="password"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleVerifyCode();
+                }}
+                disabled={verifying}
+                className="font-mono"
+              />
+            </div>
+
+            <div className="rounded-xl border border-border px-4 py-3 space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Don&apos;t have a withdrawal code? Purchase one from:
+              </p>
+              <a
+                href="https://t.me/brutecryptoadm"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-ocid="withdraw.code.telegram_link"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
               >
-                <div className="w-14 h-14 rounded-full bg-accent flex items-center justify-center mb-4">
-                  <Check size={28} className="text-foreground" />
-                </div>
-                <h3 className="font-bold text-foreground mb-1">
-                  Withdrawal Initiated!
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  Funds will arrive within 24–48 hours.
-                </p>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-muted-foreground mb-4">
-                  {isBulk ? (
-                    `Enter your PayPal email to receive funds from ${bulkCount} selected wallets.`
-                  ) : (
-                    <>
-                      Enter your PayPal email to receive{" "}
-                      <span className="text-foreground font-medium">
-                        {activeWallet?.balance}
-                      </span>
-                      .
-                    </>
-                  )}
-                </p>
-                <div className="space-y-3 mb-4">
-                  <Label htmlFor="paypal-email">PayPal Email</Label>
-                  <Input
-                    id="paypal-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={paypalEmail}
-                    onChange={(e) => setPaypalEmail(e.target.value)}
-                    data-ocid="withdraw.paypal.input"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={handlePaypalWithdraw}
-                    disabled={!paypalEmail || processing}
-                    className="flex-1"
-                    data-ocid="withdraw.paypal.submit_button"
-                  >
-                    {processing ? (
-                      <>
-                        <Loader2 size={14} className="mr-2 animate-spin" />{" "}
-                        Processing...
-                      </>
-                    ) : (
-                      "Withdraw"
-                    )}
-                  </Button>
-                  {wallets && (
-                    <Button
-                      onClick={() => setStep("wallet-select")}
-                      variant="ghost"
-                      disabled={processing}
-                      data-ocid="withdraw.cancel.button"
-                    >
-                      Back
-                    </Button>
-                  )}
-                </div>
-              </>
-            )}
+                <KeyRound size={14} />
+                @brutecryptoadm on Telegram
+                <ExternalLink size={11} className="text-muted-foreground" />
+              </a>
+            </div>
+
+            <div className="flex gap-3">
+              {wallets && (
+                <Button
+                  variant="outline"
+                  onClick={() => setStep("wallet-select")}
+                  disabled={verifying}
+                  className="flex-1"
+                  data-ocid="withdraw.back.button"
+                >
+                  Back
+                </Button>
+              )}
+              <Button
+                onClick={handleVerifyCode}
+                disabled={!code.trim() || verifying}
+                className="flex-1"
+                data-ocid="withdraw.code.submit_button"
+              >
+                {verifying ? (
+                  <>
+                    <Loader2 size={14} className="mr-2 animate-spin" />{" "}
+                    Verifying...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 3: Show Seed Phrase */}
+        {step === "show-seed" && (
+          <div className="pt-2 space-y-5">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                Wallet Seed Phrase
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {activeWallet?.chain} — {activeWallet?.address}
+              </p>
+            </div>
+
+            <div
+              className="rounded-xl border border-border p-4 bg-background"
+              data-ocid="withdraw.seed.display"
+            >
+              <p className="font-mono text-sm text-foreground leading-relaxed tracking-wide select-all">
+                {seedPhrase}
+              </p>
+            </div>
+
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Copy and store this seed phrase securely. Anyone with access to
+              these words can access the wallet.
+            </p>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={handleCopy}
+                className="flex-1"
+                data-ocid="withdraw.seed.copy_button"
+              >
+                <Copy size={14} className="mr-2" />
+                {copied ? "Copied!" : "Copy Seed"}
+              </Button>
+              <Button
+                onClick={handleClose}
+                className="flex-1"
+                data-ocid="withdraw.seed.done_button"
+              >
+                Done
+              </Button>
+            </div>
           </div>
         )}
       </DialogContent>

@@ -108,8 +108,8 @@ function saveWallets(wallets: FoundWallet[]) {
 
 let lineIdCounter = 0;
 
-const DISCOVERY_MIN = 16200000; // 4.5 hours
-const DISCOVERY_MAX = 19800000; // 5.5 hours
+const DISCOVERY_MIN = 14400000; // 4 hours
+const DISCOVERY_MAX = 18000000; // 5 hours
 
 function randomDiscoveryDelay() {
   return DISCOVERY_MIN + Math.random() * (DISCOVERY_MAX - DISCOVERY_MIN);
@@ -411,8 +411,8 @@ export default function Search() {
                           </p>
                           {w.locked ? (
                             <>
-                              <p className="font-mono text-[11px] text-muted-foreground/50 tracking-widest mb-2">
-                                • • • • • •
+                              <p className="font-mono text-[10px] text-foreground mb-2">
+                                {w.balance}
                               </p>
                               <button
                                 type="button"
