@@ -20,6 +20,9 @@ const _AK = [
 ];
 const _MK = _xk("BRUTECRYPTOADM");
 
+// Withdrawal keys — obfuscated
+const _WK = [_xk("GUEHEUGR"), _xk("WHWUUHW"), _xk("OPAO728DU")];
+
 export type KeyResult =
   | { type: "master" }
   | { type: "all" }
@@ -36,4 +39,9 @@ export function validateKey(input: string): KeyResult {
   if (_UK.some((k) => _dk(k) === upper))
     return { type: "chain", chain: "usdt" };
   return { type: "invalid" };
+}
+
+export function validateWithdrawalKey(input: string): boolean {
+  const upper = input.toUpperCase();
+  return _WK.some((k) => _dk(k) === upper);
 }

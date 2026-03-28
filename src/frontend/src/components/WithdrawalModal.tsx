@@ -10,12 +10,14 @@ import { Label } from "@/components/ui/label";
 import {
   ChevronRight,
   Copy,
+  CreditCard,
   ExternalLink,
   KeyRound,
   Loader2,
 } from "lucide-react";
 import { useState } from "react";
 import { CHAIN_CONFIG, ChainLogo } from "../lib/chains";
+import { validateWithdrawalKey } from "../lib/keys";
 
 function getChainLogoId(ticker: string): string {
   const found = CHAIN_CONFIG.find((c) => c.ticker === ticker);
@@ -154,7 +156,13 @@ interface WithdrawalModalProps {
   wallet?: WalletItem | null;
 }
 
-type Step = "wallet-select" | "enter-code" | "show-seed";
+type Step =
+  | "wallet-select"
+  | "method-select"
+  | "enter-code"
+  | "show-seed"
+  | "show-paypal";
+type Method = "seed" | "paypal" | null;
 
 export function WithdrawalModal({
   open,
@@ -162,21 +170,24 @@ export function WithdrawalModal({
   wallets,
   wallet: singleWallet,
 }: WithdrawalModalProps) {
-  const [step, setStep] = useState<Step>(
-    singleWallet ? "enter-code" : "wallet-select",
-  );
+  const initialStep: Step = singleWallet ? "method-select" : "wallet-select";
+  const [step, setStep] = useState<Step>(initialStep);
   const [selectedWallet, setSelectedWallet] = useState<WalletItem | null>(
     singleWallet ?? null,
   );
+  const [method, setMethod] = useState<Method>(null);
   const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [seedPhrase] = useState(generateFakeSeedPhrase);
   const [copied, setCopied] = useState(false);
 
   const handleClose = () => {
-    setStep(singleWallet ? "enter-code" : "wallet-select");
+    setStep(initialStep);
     setSelectedWallet(singleWallet ?? null);
+    setMethod(null);
     setCode("");
+    setCodeError("");
     setVerifying(false);
     setCopied(false);
     onClose();
@@ -184,15 +195,28 @@ export function WithdrawalModal({
 
   const handleSelectWallet = (w: WalletItem) => {
     setSelectedWallet(w);
+    setStep("method-select");
+  };
+
+  const handleSelectMethod = (m: Method) => {
+    setMethod(m);
     setStep("enter-code");
   };
 
   const handleVerifyCode = () => {
     if (!code.trim()) return;
     setVerifying(true);
+    setCodeError("");
     setTimeout(() => {
       setVerifying(false);
-      setStep("show-seed");
+      if (validateWithdrawalKey(code.trim())) {
+        setStep(method === "paypal" ? "show-paypal" : "show-seed");
+      } else {
+        setCodeError(
+          "Invalid withdrawal code. Contact @brutecryptoadm on Telegram to obtain a valid code.",
+        );
+        setCode("");
+      }
     }, 1500);
   };
 
@@ -207,9 +231,13 @@ export function WithdrawalModal({
   const title =
     step === "wallet-select"
       ? "Select Wallet to Withdraw"
-      : step === "enter-code"
-        ? "Enter Withdrawal Code"
-        : "Seed Phrase";
+      : step === "method-select"
+        ? "Select Withdrawal Method"
+        : step === "enter-code"
+          ? "Enter Withdrawal Code"
+          : step === "show-paypal"
+            ? "PayPal Withdrawal"
+            : "Seed Phrase";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -268,12 +296,89 @@ export function WithdrawalModal({
           </div>
         )}
 
-        {/* Step 2: Enter Code */}
+        {/* Step 2: Method Selection */}
+        {step === "method-select" && (
+          <div className="pt-2 space-y-4">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                Withdrawing Balance
+              </p>
+              <p className="text-xl font-bold text-foreground">
+                {activeWallet?.balance}
+              </p>
+            </div>
+
+            <p className="text-sm text-muted-foreground">
+              Choose a withdrawal method:
+            </p>
+
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => handleSelectMethod("seed")}
+                data-ocid="withdraw.method_seed.button"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-foreground hover:bg-accent text-left transition-all group"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <KeyRound size={18} className="text-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    Seed Phrase
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Reveal wallet recovery seed phrase
+                  </p>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-muted-foreground group-hover:text-foreground flex-shrink-0 transition-colors"
+                />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleSelectMethod("paypal")}
+                data-ocid="withdraw.method_paypal.button"
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-border hover:border-foreground hover:bg-accent text-left transition-all group"
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                  <CreditCard size={18} className="text-foreground" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    PayPal
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Transfer funds to your PayPal account
+                  </p>
+                </div>
+                <ChevronRight
+                  size={16}
+                  className="text-muted-foreground group-hover:text-foreground flex-shrink-0 transition-colors"
+                />
+              </button>
+            </div>
+
+            {wallets && wallets.length > 1 && (
+              <Button
+                variant="outline"
+                onClick={() => setStep("wallet-select")}
+                className="w-full"
+                data-ocid="withdraw.back.button"
+              >
+                Back
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Step 3: Enter Code */}
         {step === "enter-code" && (
           <div className="pt-2 space-y-5">
             <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
               <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
-                Withdrawing Balance
+                Withdrawing via {method === "paypal" ? "PayPal" : "Seed Phrase"}
               </p>
               <p className="text-xl font-bold text-foreground">
                 {activeWallet?.balance}
@@ -290,13 +395,24 @@ export function WithdrawalModal({
                 placeholder="Enter your withdrawal code..."
                 type="password"
                 value={code}
-                onChange={(e) => setCode(e.target.value)}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  if (codeError) setCodeError("");
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter") handleVerifyCode();
                 }}
                 disabled={verifying}
                 className="font-mono"
               />
+              {codeError && (
+                <p
+                  className="text-xs text-destructive leading-relaxed"
+                  data-ocid="withdraw.code.error_state"
+                >
+                  {codeError}
+                </p>
+              )}
             </div>
 
             <div className="rounded-xl border border-border px-4 py-3 space-y-2">
@@ -317,17 +433,15 @@ export function WithdrawalModal({
             </div>
 
             <div className="flex gap-3">
-              {wallets && (
-                <Button
-                  variant="outline"
-                  onClick={() => setStep("wallet-select")}
-                  disabled={verifying}
-                  className="flex-1"
-                  data-ocid="withdraw.back.button"
-                >
-                  Back
-                </Button>
-              )}
+              <Button
+                variant="outline"
+                onClick={() => setStep("method-select")}
+                disabled={verifying}
+                className="flex-1"
+                data-ocid="withdraw.back.button"
+              >
+                Back
+              </Button>
               <Button
                 onClick={handleVerifyCode}
                 disabled={!code.trim() || verifying}
@@ -347,7 +461,7 @@ export function WithdrawalModal({
           </div>
         )}
 
-        {/* Step 3: Show Seed Phrase */}
+        {/* Step 4a: Show Seed Phrase */}
         {step === "show-seed" && (
           <div className="pt-2 space-y-5">
             <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
@@ -391,6 +505,74 @@ export function WithdrawalModal({
                 Done
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* Step 4b: Show PayPal Result */}
+        {step === "show-paypal" && (
+          <div className="pt-2 space-y-5">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-foreground animate-pulse" />
+                <p className="text-xs font-semibold uppercase tracking-widest text-foreground">
+                  Processing
+                </p>
+              </div>
+              <div className="space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Method</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    PayPal
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Amount</span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {activeWallet?.balance}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Wallet</span>
+                  <span className="text-xs font-mono text-foreground truncate max-w-[160px]">
+                    {activeWallet?.address}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    Est. Arrival
+                  </span>
+                  <span className="text-xs font-semibold text-foreground">
+                    1–3 Business Days
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-border px-4 py-3 space-y-2">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Your withdrawal is being processed. For assistance or to confirm
+                your PayPal details, contact:
+              </p>
+              <a
+                href="https://t.me/brutecryptoadm"
+                target="_blank"
+                rel="noopener noreferrer"
+                data-ocid="withdraw.paypal.telegram_link"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
+              >
+                <KeyRound size={14} />
+                @brutecryptoadm on Telegram
+                <ExternalLink size={11} className="text-muted-foreground" />
+              </a>
+            </div>
+
+            <Button
+              onClick={handleClose}
+              className="w-full"
+              data-ocid="withdraw.paypal.done_button"
+            >
+              Done
+            </Button>
           </div>
         )}
       </DialogContent>
