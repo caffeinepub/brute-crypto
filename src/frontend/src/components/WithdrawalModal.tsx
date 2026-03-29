@@ -322,7 +322,7 @@ export function WithdrawalModal({
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                   <KeyRound size={18} className="text-foreground" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">
                     Seed Phrase
                   </p>
@@ -345,7 +345,7 @@ export function WithdrawalModal({
                 <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
                   <CreditCard size={18} className="text-foreground" />
                 </div>
-                <div className="flex-1">
+                <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-foreground">
                     PayPal
                   </p>

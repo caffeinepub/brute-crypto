@@ -46,7 +46,7 @@ export default function Login() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-md"
       >
-        <div className="p-8 bg-card rounded-2xl border border-border">
+        <div className="p-6 sm:p-8 bg-card rounded-2xl border border-border">
           <div className="flex justify-center mb-6">
             <div className="w-14 h-14 rounded-2xl bg-accent flex items-center justify-center">
               <KeyRound size={24} className="text-foreground" />

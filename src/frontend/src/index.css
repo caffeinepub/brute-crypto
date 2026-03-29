@@ -84,6 +84,7 @@
 
   body {
     @apply bg-background text-foreground;
+    overflow-x: hidden;
     font-family: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display",
       system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
@@ -100,8 +101,8 @@
     max-width: 1200px;
     margin-left: auto;
     margin-right: auto;
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
+    padding-left: clamp(1rem, 4vw, 1.5rem);
+    padding-right: clamp(1rem, 4vw, 1.5rem);
   }
 
   .section-padding {
@@ -113,6 +114,13 @@
     .section-padding {
       padding-top: 3.75rem;
       padding-bottom: 3.75rem;
+    }
+  }
+
+  @media (max-width: 480px) {
+    .section-padding {
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
     }
   }
 }

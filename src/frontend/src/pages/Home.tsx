@@ -84,16 +84,16 @@ export default function Home() {
             initial={{ opacity: 0, y: 24 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
-            className="max-w-3xl relative"
+            className="max-w-3xl relative overflow-hidden"
           >
             {/* Hero glow behind headline */}
             <div
               className="absolute pointer-events-none"
               style={{
-                width: 700,
-                height: 300,
-                top: -60,
-                left: -80,
+                width: "min(700px, 100vw)",
+                height: "clamp(150px, 30vw, 300px)",
+                top: "-60px",
+                left: "clamp(-80px, -10vw, -20px)",
                 borderRadius: "50%",
                 background: isDark
                   ? "radial-gradient(ellipse, rgba(255,255,255,0.15) 0%, transparent 65%)"

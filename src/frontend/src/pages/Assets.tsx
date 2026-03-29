@@ -284,7 +284,7 @@ export default function Assets() {
                         className="border-b border-border/50 last:border-0 hover:bg-accent/50 transition-colors"
                         data-ocid={`assets.item.${i + 1}`}
                       >
-                        <td className="px-4 sm:px-5 py-4 font-mono text-xs text-muted-foreground truncate max-w-[140px] sm:max-w-[220px]">
+                        <td className="px-4 sm:px-5 py-4 font-mono text-xs text-muted-foreground truncate max-w-[120px] sm:max-w-[200px]">
                           {asset.address}
                         </td>
                         <td className="px-4 sm:px-5 py-4">

@@ -101,7 +101,7 @@ export default function SelectChain() {
                   onClick={() => !isDisabled && !isLocked && toggle(chain.id)}
                   data-ocid={`chain.${chain.id}.toggle`}
                   disabled={isDisabled}
-                  className={`relative p-5 rounded-2xl border-2 text-left transition-all ${
+                  className={`relative p-4 sm:p-5 rounded-2xl border-2 text-left transition-all ${
                     isDisabled
                       ? "opacity-30 cursor-not-allowed border-border bg-card"
                       : isLocked

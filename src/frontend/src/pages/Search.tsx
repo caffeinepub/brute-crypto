@@ -334,7 +334,7 @@ export default function Search() {
 
               <div
                 ref={searchScrollRef}
-                className="flex-1 min-h-[260px] max-h-[320px] overflow-y-auto rounded-xl bg-background border border-border p-4 font-mono text-[11px] leading-relaxed"
+                className="flex-1 min-h-[180px] sm:min-h-[260px] max-h-[260px] sm:max-h-[320px] overflow-y-auto rounded-xl bg-background border border-border p-4 font-mono text-[11px] leading-relaxed"
                 data-ocid="search.canvas_target"
               >
                 {searchLines.length === 0 ? (

@@ -111,7 +111,7 @@ export default function Support() {
                   Frequently Asked Questions
                 </h2>
               </div>
-              <div className="bg-card rounded-2xl border border-border px-6">
+              <div className="bg-card rounded-2xl border border-border px-4 sm:px-6">
                 {FAQS.map((faq, i) => (
                   <FAQItem
                     key={faq.id}
