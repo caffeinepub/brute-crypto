@@ -44,9 +44,11 @@ persistent actor {
   ];
 
   var stableWithdrawalCodes : [(Text, Bool)] = [
-    ("GUEHEUGR", false),
-    ("WHWUUHW", false),
-    ("OPAO728DU", false)
+    ("YIFRUBTT", false),
+    ("TYRGUHJ", false),
+    ("FGDJJUH", false),
+    ("FGUBHUJ", false),
+    ("YOGREYJK", false)
   ];
 
   var stableMockWallets : [(Text, Text, Text)] = [];
