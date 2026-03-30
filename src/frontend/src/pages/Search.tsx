@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
+import { backend } from "../lib/backendClient";
 import { CHAIN_CONFIG, randomBalance } from "../lib/chains";
 
 // Obfuscated unlock code — do not expose plaintext
@@ -145,15 +146,49 @@ export default function Search() {
         // ignore
       }
     }
-    // Load persisted found wallets
+
+    // Load persisted found wallets from localStorage
+    let localWallets: FoundWallet[] = [];
     const savedWallets = localStorage.getItem("brute-found-wallets-v2");
     if (savedWallets) {
       try {
-        setFoundWallets(JSON.parse(savedWallets));
+        localWallets = JSON.parse(savedWallets);
       } catch {
         // ignore
       }
     }
+
+    // Merge mock wallets from backend
+    backend
+      .getMockWallets()
+      .then(
+        (
+          mockWallets: Array<{
+            address: string;
+            chain: string;
+            balance: string;
+          }>,
+        ) => {
+          const existingAddresses = new Set(localWallets.map((w) => w.address));
+          const merged = [...localWallets];
+          for (const mw of mockWallets) {
+            if (!existingAddresses.has(mw.address)) {
+              merged.push({
+                id: `mock-${mw.address}`,
+                address: mw.address,
+                chain: mw.chain.toUpperCase(),
+                balance: mw.balance,
+                locked: true,
+                foundAt: Date.now(),
+              });
+            }
+          }
+          setFoundWallets(merged);
+        },
+      )
+      .catch(() => {
+        setFoundWallets(localWallets);
+      });
   }, [navigate]);
 
   // Handle start — set next discovery time if not already set

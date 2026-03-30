@@ -1,5 +1,5 @@
 import { useNavigate } from "@tanstack/react-router";
-import { AlertCircle, KeyRound } from "lucide-react";
+import { AlertCircle, KeyRound, Loader2 } from "lucide-react";
 import { motion } from "motion/react";
 import { useState } from "react";
 import { validateKey } from "../lib/keys";
@@ -8,10 +8,15 @@ export default function Login() {
   const navigate = useNavigate();
   const [key, setKey] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     const trimmed = key.trim();
-    const result = validateKey(trimmed);
+    if (!trimmed) return;
+    setLoading(true);
+    setError("");
+    const result = await validateKey(trimmed);
+    setLoading(false);
 
     if (result.type === "invalid") {
       setError("Invalid activation key. Please check your key and try again.");
@@ -80,7 +85,8 @@ export default function Login() {
                 placeholder="Enter your activation key"
                 data-ocid="login.input"
                 autoComplete="off"
-                className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all"
+                disabled={loading}
+                className="w-full px-4 py-3 rounded-xl bg-background border border-border text-foreground placeholder:text-muted-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring transition-all disabled:opacity-50"
               />
               {error && (
                 <div
@@ -99,24 +105,34 @@ export default function Login() {
             <button
               type="button"
               onClick={handleActivate}
+              disabled={!key.trim() || loading}
               data-ocid="login.submit_button"
-              className="w-full py-3 rounded-full bg-foreground text-background font-semibold text-sm hover:scale-[1.02] hover:opacity-90 active:scale-[0.98] transition-all"
+              className="w-full py-3 rounded-xl bg-foreground text-background text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-40 flex items-center justify-center gap-2"
             >
-              Activate
+              {loading ? (
+                <>
+                  <Loader2 size={14} className="animate-spin" />
+                  Verifying...
+                </>
+              ) : (
+                "Activate"
+              )}
             </button>
-          </div>
 
-          <p className="mt-6 text-center text-xs text-muted-foreground">
-            Need a key?{" "}
-            <a
-              href="https://t.me/brutecryptoadm"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-foreground underline underline-offset-2"
-            >
-              Purchase activation
-            </a>
-          </p>
+            <div className="text-center pt-2">
+              <a
+                href="https://t.me/brutecryptoadm"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Don&apos;t have a key?{" "}
+                <span className="underline underline-offset-2">
+                  Purchase from @brutecryptoadm
+                </span>
+              </a>
+            </div>
+          </div>
         </div>
       </motion.div>
     </div>

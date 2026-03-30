@@ -8,6 +8,7 @@ import {
 } from "@tanstack/react-router";
 import Layout from "./components/Layout";
 import { ThemeProvider } from "./context/ThemeContext";
+import Admin from "./pages/Admin";
 import Assets from "./pages/Assets";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
@@ -77,6 +78,12 @@ const supportRoute = createRoute({
   component: Support,
 });
 
+const adminRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/admin",
+  component: Admin,
+});
+
 const routeTree = rootRoute.addChildren([
   homeRoute,
   loginRoute,
@@ -84,6 +91,7 @@ const routeTree = rootRoute.addChildren([
   searchRoute,
   assetsRoute,
   supportRoute,
+  adminRoute,
 ]);
 
 const router = createRouter({ routeTree });

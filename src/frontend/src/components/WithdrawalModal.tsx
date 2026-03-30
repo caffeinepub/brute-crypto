@@ -8,6 +8,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  CheckCircle2,
   ChevronRight,
   Copy,
   CreditCard,
@@ -143,7 +144,7 @@ function generateFakeSeedPhrase(): string {
   ).join(" ");
 }
 
-interface WalletItem {
+export interface WalletItem {
   address: string;
   chain: string;
   balance: string;
@@ -154,14 +155,17 @@ interface WithdrawalModalProps {
   onClose: () => void;
   wallets?: WalletItem[];
   wallet?: WalletItem | null;
+  onWalletUsed?: (wallet: WalletItem) => void;
 }
 
 type Step =
   | "wallet-select"
   | "method-select"
+  | "paypal-email"
   | "enter-code"
-  | "show-seed"
-  | "show-paypal";
+  | "paypal-confirm"
+  | "paypal-done"
+  | "show-seed";
 type Method = "seed" | "paypal" | null;
 
 export function WithdrawalModal({
@@ -169,6 +173,7 @@ export function WithdrawalModal({
   onClose,
   wallets,
   wallet: singleWallet,
+  onWalletUsed,
 }: WithdrawalModalProps) {
   const initialStep: Step = singleWallet ? "method-select" : "wallet-select";
   const [step, setStep] = useState<Step>(initialStep);
@@ -181,6 +186,8 @@ export function WithdrawalModal({
   const [verifying, setVerifying] = useState(false);
   const [seedPhrase] = useState(generateFakeSeedPhrase);
   const [copied, setCopied] = useState(false);
+  const [paypalEmail, setPaypalEmail] = useState("");
+  const [emailError, setEmailError] = useState("");
 
   const handleClose = () => {
     setStep(initialStep);
@@ -190,6 +197,8 @@ export function WithdrawalModal({
     setCodeError("");
     setVerifying(false);
     setCopied(false);
+    setPaypalEmail("");
+    setEmailError("");
     onClose();
   };
 
@@ -200,30 +209,57 @@ export function WithdrawalModal({
 
   const handleSelectMethod = (m: Method) => {
     setMethod(m);
+    if (m === "paypal") {
+      setStep("paypal-email");
+    } else {
+      setStep("enter-code");
+    }
+  };
+
+  const handlePaypalEmailSubmit = () => {
+    if (!paypalEmail.trim() || !paypalEmail.includes("@")) {
+      setEmailError("Please enter a valid PayPal email address.");
+      return;
+    }
+    setEmailError("");
     setStep("enter-code");
   };
 
-  const handleVerifyCode = () => {
+  const handleVerifyCode = async () => {
     if (!code.trim()) return;
     setVerifying(true);
     setCodeError("");
-    setTimeout(() => {
-      setVerifying(false);
-      if (validateWithdrawalKey(code.trim())) {
-        setStep(method === "paypal" ? "show-paypal" : "show-seed");
+    const valid = await validateWithdrawalKey(code.trim());
+    setVerifying(false);
+    if (valid) {
+      if (method === "paypal") {
+        setStep("paypal-confirm");
       } else {
-        setCodeError(
-          "Invalid withdrawal code. Contact @brutecryptoadm on Telegram to obtain a valid code.",
-        );
-        setCode("");
+        setStep("show-seed");
       }
-    }, 1500);
+    } else {
+      setCodeError(
+        "Code already used or invalid. Contact @brutecryptoadm on Telegram for a new code.",
+      );
+      setCode("");
+    }
+  };
+
+  const handlePaypalConfirm = () => {
+    setStep("paypal-done");
   };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(seedPhrase);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleDone = () => {
+    if (selectedWallet && onWalletUsed) {
+      onWalletUsed(selectedWallet);
+    }
+    handleClose();
   };
 
   const activeWallet = selectedWallet;
@@ -233,11 +269,15 @@ export function WithdrawalModal({
       ? "Select Wallet to Withdraw"
       : step === "method-select"
         ? "Select Withdrawal Method"
-        : step === "enter-code"
-          ? "Enter Withdrawal Code"
-          : step === "show-paypal"
-            ? "PayPal Withdrawal"
-            : "Seed Phrase";
+        : step === "paypal-email"
+          ? "PayPal Withdrawal"
+          : step === "enter-code"
+            ? "Enter Withdrawal Code"
+            : step === "paypal-confirm"
+              ? "Confirm Withdrawal"
+              : step === "paypal-done"
+                ? "Withdrawal Sent"
+                : "Seed Phrase";
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -247,11 +287,13 @@ export function WithdrawalModal({
       >
         <DialogHeader>
           <DialogTitle className="text-lg font-bold">{title}</DialogTitle>
-          {activeWallet && step !== "wallet-select" && (
-            <p className="text-sm text-muted-foreground font-mono mt-1 truncate">
-              {activeWallet.chain} — {activeWallet.address}
-            </p>
-          )}
+          {activeWallet &&
+            step !== "wallet-select" &&
+            step !== "paypal-done" && (
+              <p className="text-sm text-muted-foreground font-mono mt-1 truncate">
+                {activeWallet.chain} — {activeWallet.address}
+              </p>
+            )}
         </DialogHeader>
 
         {/* Step 1: Wallet Selection */}
@@ -373,6 +415,62 @@ export function WithdrawalModal({
           </div>
         )}
 
+        {/* Step 2b: PayPal Email */}
+        {step === "paypal-email" && (
+          <div className="pt-2 space-y-5">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">
+                Withdrawing Balance
+              </p>
+              <p className="text-xl font-bold text-foreground">
+                {activeWallet?.balance}
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="paypal-email" className="text-xs font-semibold">
+                PayPal Email Address
+              </Label>
+              <Input
+                id="paypal-email"
+                data-ocid="withdraw.paypal_email.input"
+                type="email"
+                placeholder="your@paypal.com"
+                value={paypalEmail}
+                onChange={(e) => {
+                  setPaypalEmail(e.target.value);
+                  if (emailError) setEmailError("");
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handlePaypalEmailSubmit();
+                }}
+              />
+              {emailError && (
+                <p className="text-xs text-destructive">{emailError}</p>
+              )}
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setStep("method-select")}
+                className="flex-1"
+                data-ocid="withdraw.back.button"
+              >
+                Back
+              </Button>
+              <Button
+                onClick={handlePaypalEmailSubmit}
+                disabled={!paypalEmail.trim()}
+                className="flex-1"
+                data-ocid="withdraw.paypal_email.submit_button"
+              >
+                Send
+              </Button>
+            </div>
+          </div>
+        )}
+
         {/* Step 3: Enter Code */}
         {step === "enter-code" && (
           <div className="pt-2 space-y-5">
@@ -435,7 +533,11 @@ export function WithdrawalModal({
             <div className="flex gap-3">
               <Button
                 variant="outline"
-                onClick={() => setStep("method-select")}
+                onClick={() =>
+                  setStep(
+                    method === "paypal" ? "paypal-email" : "method-select",
+                  )
+                }
                 disabled={verifying}
                 className="flex-1"
                 data-ocid="withdraw.back.button"
@@ -461,7 +563,87 @@ export function WithdrawalModal({
           </div>
         )}
 
-        {/* Step 4a: Show Seed Phrase */}
+        {/* Step 4: PayPal Confirm */}
+        {step === "paypal-confirm" && (
+          <div className="pt-2 space-y-5">
+            <div className="rounded-xl bg-muted/40 border border-border px-4 py-4 space-y-3">
+              <p className="text-[10px] uppercase tracking-widest text-muted-foreground">
+                Withdrawal Summary
+              </p>
+              <div className="space-y-2">
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Amount</span>
+                  <span className="text-xs font-bold text-foreground">
+                    {activeWallet?.balance}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">
+                    PayPal Email
+                  </span>
+                  <span className="text-xs font-semibold text-foreground">
+                    {paypalEmail}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-xs text-muted-foreground">Wallet</span>
+                  <span className="text-xs font-mono text-foreground truncate max-w-[160px]">
+                    {activeWallet?.address}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <Button
+              onClick={handlePaypalConfirm}
+              className="w-full"
+              data-ocid="withdraw.paypal_confirm.button"
+            >
+              Confirm &amp; Send
+            </Button>
+
+            <Button
+              variant="outline"
+              onClick={() => setStep("enter-code")}
+              className="w-full"
+              data-ocid="withdraw.back.button"
+            >
+              Back
+            </Button>
+          </div>
+        )}
+
+        {/* Step 5a: PayPal Done */}
+        {step === "paypal-done" && (
+          <div className="pt-2 space-y-5">
+            <div className="flex flex-col items-center text-center py-4 gap-3">
+              <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center">
+                <CheckCircle2 size={32} className="text-foreground" />
+              </div>
+              <div>
+                <p className="text-lg font-bold text-foreground">
+                  {activeWallet?.balance}
+                </p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Funds sent to your PayPal
+                </p>
+                <p className="text-xs text-muted-foreground font-mono mt-1">
+                  {paypalEmail}
+                </p>
+              </div>
+            </div>
+
+            <Button
+              onClick={handleDone}
+              className="w-full"
+              data-ocid="withdraw.paypal.done_button"
+            >
+              Done
+            </Button>
+          </div>
+        )}
+
+        {/* Step 5b: Show Seed Phrase */}
         {step === "show-seed" && (
           <div className="pt-2 space-y-5">
             <div className="rounded-xl bg-muted/40 border border-border px-4 py-3">
@@ -498,81 +680,13 @@ export function WithdrawalModal({
                 {copied ? "Copied!" : "Copy Seed"}
               </Button>
               <Button
-                onClick={handleClose}
+                onClick={handleDone}
                 className="flex-1"
                 data-ocid="withdraw.seed.done_button"
               >
                 Done
               </Button>
             </div>
-          </div>
-        )}
-
-        {/* Step 4b: Show PayPal Result */}
-        {step === "show-paypal" && (
-          <div className="pt-2 space-y-5">
-            <div className="rounded-xl bg-muted/40 border border-border px-4 py-3 space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-foreground animate-pulse" />
-                <p className="text-xs font-semibold uppercase tracking-widest text-foreground">
-                  Processing
-                </p>
-              </div>
-              <div className="space-y-1.5">
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Method</span>
-                  <span className="text-xs font-semibold text-foreground">
-                    PayPal
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Amount</span>
-                  <span className="text-xs font-semibold text-foreground">
-                    {activeWallet?.balance}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">Wallet</span>
-                  <span className="text-xs font-mono text-foreground truncate max-w-[160px]">
-                    {activeWallet?.address}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">
-                    Est. Arrival
-                  </span>
-                  <span className="text-xs font-semibold text-foreground">
-                    1–3 Business Days
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-xl border border-border px-4 py-3 space-y-2">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                Your withdrawal is being processed. For assistance or to confirm
-                your PayPal details, contact:
-              </p>
-              <a
-                href="https://t.me/brutecryptoadm"
-                target="_blank"
-                rel="noopener noreferrer"
-                data-ocid="withdraw.paypal.telegram_link"
-                className="inline-flex items-center gap-2 text-sm font-semibold text-foreground hover:opacity-70 transition-opacity"
-              >
-                <KeyRound size={14} />
-                @brutecryptoadm on Telegram
-                <ExternalLink size={11} className="text-muted-foreground" />
-              </a>
-            </div>
-
-            <Button
-              onClick={handleClose}
-              className="w-full"
-              data-ocid="withdraw.paypal.done_button"
-            >
-              Done
-            </Button>
           </div>
         )}
       </DialogContent>

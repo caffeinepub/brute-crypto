@@ -2,7 +2,10 @@ import { useNavigate } from "@tanstack/react-router";
 import { Coins, Download, TrendingUp, Wallet } from "lucide-react";
 import { motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { WithdrawalModal } from "../components/WithdrawalModal";
+import {
+  type WalletItem,
+  WithdrawalModal,
+} from "../components/WithdrawalModal";
 import { CHAIN_CONFIG, ChainLogo, parseBalanceUSD } from "../lib/chains";
 
 interface WalletAsset {
@@ -128,6 +131,31 @@ export default function Assets() {
       setAssets([]);
     }
   }, [navigate]);
+
+  const handleWalletUsed = (wallet: WalletItem) => {
+    setAssets((prev) => {
+      const updated = prev.filter((a) => a.address !== wallet.address);
+      // Sync both localStorage keys
+      localStorage.setItem("brute-found-wallets", JSON.stringify(updated));
+      // Also update v2 format used by Search page
+      const v2stored = localStorage.getItem("brute-found-wallets-v2");
+      if (v2stored) {
+        try {
+          const v2 = JSON.parse(v2stored);
+          const updatedV2 = v2.filter(
+            (w: { address: string }) => w.address !== wallet.address,
+          );
+          localStorage.setItem(
+            "brute-found-wallets-v2",
+            JSON.stringify(updatedV2),
+          );
+        } catch {
+          // ignore
+        }
+      }
+      return updated;
+    });
+  };
 
   const chains = ["All", ...Array.from(new Set(assets.map((a) => a.chain)))];
   const filtered =
@@ -319,6 +347,7 @@ export default function Assets() {
         open={withdrawOpen}
         onClose={() => setWithdrawOpen(false)}
         wallets={filtered}
+        onWalletUsed={handleWalletUsed}
       />
     </div>
   );
