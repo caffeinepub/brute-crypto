@@ -112,7 +112,7 @@ function saveWallets(wallets: FoundWallet[]) {
 
 let lineIdCounter = 0;
 
-const DISCOVERY_DELAY = 18000000; // exactly 5 hours
+const DISCOVERY_DELAY = 18000000; // exactly 5 hours in ms
 
 function randomDiscoveryDelay() {
   return DISCOVERY_DELAY;
@@ -137,7 +137,11 @@ export default function Search() {
       navigate({ to: "/login" });
       return;
     }
-    setIsVip(localStorage.getItem("brute-master-key") === "true");
+
+    // VIP: show badge for both master key ("true") and all-blockchain keys ("all")
+    const masterKey = localStorage.getItem("brute-master-key");
+    setIsVip(masterKey === "true" || masterKey === "all");
+
     const stored = localStorage.getItem("brute-chains");
     if (stored) {
       try {

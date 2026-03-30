@@ -627,6 +627,9 @@ export function WithdrawalModal({
                 <p className="text-sm text-muted-foreground mt-1">
                   Funds sent to your PayPal
                 </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Estimated arrival: ~6 hrs
+                </p>
                 <p className="text-xs text-muted-foreground font-mono mt-1">
                   {paypalEmail}
                 </p>

@@ -1,43 +1,31 @@
 # Brute Crypto
 
 ## Current State
-- 6-page React frontend: Home, Login, SelectChain, Search, Assets, Support
-- Keys and withdrawal codes are hardcoded in `lib/keys.ts` (obfuscated)
-- PayPal withdrawal shows a processing confirmation screen but doesn't collect email or remove the wallet
-- No shared backend state — everything in localStorage per user
-- No admin panel
+The app has a fully functional Motoko backend (`main.mo`) with all key validation logic, but the auto-generated frontend bindings (`declarations/backend.did.js`, `backend.ts`, `backend.d.ts`) only contain a stub `greet` method. This means every call to `validateActivationKey`, `getMockWallets`, `validateWithdrawalCode`, etc. silently throws "Method not found" — no keys work at all.
+
+Additionally, the VIP badge in Search.tsx only checks `localStorage.getItem("brute-master-key") === "true"`, missing the `"all"` type set by all-blockchain keys (GEUJWIJV, KAIHVWFY, GSYVUWIN, UIOENSOP).
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Motoko backend** to store shared state: activation keys, withdrawal codes, mock wallets
-- **Admin panel** at `/admin` route, guarded by secret phrase "The quick brown dog jumps over a lazy fox" (checked frontend-only). Admin can:
-  - Add activation keys (key + blockchain type: BTC/ETH/BNB/USDT/ALL)
-  - Add withdrawal codes
-  - Add mock wallet entries (address, chain, balance)
-  - View counts of keys, codes, wallets
-- **One-time-use keys**: activation keys and withdrawal codes are marked used in backend after first use; same key can never be used again
-- **Global mock wallets**: mock wallets added via admin panel are fetched from backend and shown on Search page found box for all users
-- **Updated PayPal flow**: wallet-select → PayPal → enter email → Send button → enter unlock code → confirm → success screen → wallet removed from list
+- Full IDL in `declarations/backend.did.js` covering all backend methods
+- TypeScript `_SERVICE` type in `declarations/backend.did.d.ts` for all methods
+- Typed methods on `Backend` class and `backendInterface` in `backend.ts` / `backend.d.ts`
 
 ### Modify
-- `lib/keys.ts`: remove hardcoded key validation; instead call backend `validateActivationKey` and `validateWithdrawalCode`
-- `WithdrawalModal.tsx`: add email-collection step before unlock code for PayPal; add wallet-removal callback on success
-- `Assets.tsx`: pass wallet removal handler to WithdrawalModal
-- `Search.tsx`: on mount, also load mock wallets from backend (merged with localStorage wallets)
-- `App.tsx`: add `/admin` route
-- `Login.tsx`: call backend to validate key (one-time use check)
+- `declarations/backend.did.js`: Add validateActivationKey, validateWithdrawalCode, getMockWallets, addActivationKey, addWithdrawalCode, addMockWallet, clearMockWallets, getActivationKeys, getWithdrawalCodes, getAdminStats
+- `declarations/backend.did.d.ts`: Update `_SERVICE` type with all methods
+- `backend.ts`: Add all methods to `Backend` class and `backendInterface`
+- `backend.d.ts`: Add all methods to `backendInterface`
+- `pages/Search.tsx`: Fix isVip to check both `"true"` and `"all"`
 
 ### Remove
-- All hardcoded keys/codes from `lib/keys.ts`
-- Old synchronous key validation (replaced by async backend calls)
+- Nothing removed
 
 ## Implementation Plan
-1. Write Motoko backend: `addActivationKey`, `validateActivationKey`, `addWithdrawalCode`, `validateWithdrawalCode`, `addMockWallet`, `getMockWallets`, `getAdminStats` — all admin mutating functions require an admin token parameter
-2. Pre-seed backend with existing keys and withdrawal codes via stable storage initialization
-3. Create `src/frontend/src/pages/Admin.tsx` — phrase-gated admin panel
-4. Update `lib/keys.ts` to export async functions that call backend
-5. Update `WithdrawalModal.tsx`: add `paypal-email` step, add `onWalletUsed` prop callback
-6. Update `Assets.tsx`: remove wallet from state on successful withdrawal
-7. Update `Search.tsx`: fetch mock wallets from backend on mount
-8. Register `/admin` route in `App.tsx`
+1. Rewrite `declarations/backend.did.js` with correct IDL for all Motoko public methods
+2. Rewrite `declarations/backend.did.d.ts` with TypeScript types matching the IDL
+3. Rewrite `backend.ts` with full `Backend` class (all methods) and updated `backendInterface`
+4. Rewrite `backend.d.ts` with updated `backendInterface`
+5. Patch `Search.tsx` line: `setIsVip(masterKey === "true" || masterKey === "all")`
+6. Validate build
