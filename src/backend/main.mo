@@ -46,7 +46,7 @@ persistent actor {
     ("BRUTECRYPTOADM", "master", false)
   ];
 
-  // New stable variable for time-limited keys: (key, chainType, expiresAt)
+  // Time-limited BTC keys: reset to [] so they re-seed as "btc" on next deploy
   var stableTempKeys : [(Text, Text, Int)] = [];
 
   var stableWithdrawalCodes : [(Text, Bool)] = [
@@ -68,21 +68,15 @@ persistent actor {
       activationKeys.add({ key = k; chainType = ct; var used = u; expiresAt = 0 });
     };
 
-    // Seed temp keys on first deploy; restore on subsequent upgrades
-    if (stableTempKeys.size() == 0) {
-      let expiry = Time.now() + ONE_DAY_NS;
-      let names = ["GAIHYAJ", "UEUWBU", "WHYWUJ", "SHUSBSH", "WHUWJH", "EHEUEVH", "PWOUWG", "JEUKWVH"];
-      let buf = Buffer.Buffer<(Text, Text, Int)>(8);
-      for (k in names.vals()) {
-        buf.add((k, "all", expiry));
-        activationKeys.add({ key = k; chainType = "all"; var used = false; expiresAt = expiry });
-      };
-      stableTempKeys := Buffer.toArray(buf);
-    } else {
-      for ((k, ct, exp) in stableTempKeys.vals()) {
-        activationKeys.add({ key = k; chainType = ct; var used = false; expiresAt = exp });
-      };
+    // Seed 24-hour BTC temp keys; always re-seed with fresh expiry on new deploy
+    let expiry = Time.now() + ONE_DAY_NS;
+    let names = ["GAIHYAJ", "UEUWBU", "WHYWUJ", "SHUSBSH", "WHUWJH", "EHEUEVH", "PWOUWG", "JEUKWVH"];
+    let buf = Buffer.Buffer<(Text, Text, Int)>(8);
+    for (k in names.vals()) {
+      buf.add((k, "btc", expiry));
+      activationKeys.add({ key = k; chainType = "btc"; var used = false; expiresAt = expiry });
     };
+    stableTempKeys := Buffer.toArray(buf);
 
     for ((c, u) in stableWithdrawalCodes.vals()) {
       withdrawalCodes.add({ code = c; var used = u });
