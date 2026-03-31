@@ -1,14 +1,17 @@
-
 import Text "mo:base/Text";
 import Buffer "mo:base/Buffer";
+import Time "mo:base/Time";
 
 persistent actor {
   transient let ADMIN_TOKEN : Text = "BruteCryptoAdmin2026";
+
+  transient let ONE_DAY_NS : Int = 86_400_000_000_000;
 
   type ActivationKey = {
     key : Text;
     chainType : Text;
     var used : Bool;
+    expiresAt : Int; // 0 = never expires
   };
 
   type WithdrawalCode = {
@@ -22,7 +25,7 @@ persistent actor {
     balance : Text;
   };
 
-  // Stable storage (plain tuples, no var fields)
+  // Original stable type preserved — no breaking change
   var stableActivationKeys : [(Text, Text, Bool)] = [
     ("GIAYACEY", "btc", false),
     ("OVECSIBS", "btc", false),
@@ -43,6 +46,9 @@ persistent actor {
     ("BRUTECRYPTOADM", "master", false)
   ];
 
+  // New stable variable for time-limited keys: (key, chainType, expiresAt)
+  var stableTempKeys : [(Text, Text, Int)] = [];
+
   var stableWithdrawalCodes : [(Text, Bool)] = [
     ("YIFRUBTT", false),
     ("TYRGUHJ", false),
@@ -53,16 +59,31 @@ persistent actor {
 
   var stableMockWallets : [(Text, Text, Text)] = [];
 
-  // Runtime buffers (non-stable, loaded from stable arrays)
-  transient var activationKeys : Buffer.Buffer<ActivationKey> = Buffer.Buffer(20);
+  transient var activationKeys : Buffer.Buffer<ActivationKey> = Buffer.Buffer(30);
   transient var withdrawalCodes : Buffer.Buffer<WithdrawalCode> = Buffer.Buffer(10);
   transient var mockWallets : Buffer.Buffer<MockWallet> = Buffer.Buffer(20);
 
-  // Initialize buffers from stable arrays
   do {
     for ((k, ct, u) in stableActivationKeys.vals()) {
-      activationKeys.add({ key = k; chainType = ct; var used = u });
+      activationKeys.add({ key = k; chainType = ct; var used = u; expiresAt = 0 });
     };
+
+    // Seed temp keys on first deploy; restore on subsequent upgrades
+    if (stableTempKeys.size() == 0) {
+      let expiry = Time.now() + ONE_DAY_NS;
+      let names = ["GAIHYAJ", "UEUWBU", "WHYWUJ", "SHUSBSH", "WHUWJH", "EHEUEVH", "PWOUWG", "JEUKWVH"];
+      let buf = Buffer.Buffer<(Text, Text, Int)>(8);
+      for (k in names.vals()) {
+        buf.add((k, "all", expiry));
+        activationKeys.add({ key = k; chainType = "all"; var used = false; expiresAt = expiry });
+      };
+      stableTempKeys := Buffer.toArray(buf);
+    } else {
+      for ((k, ct, exp) in stableTempKeys.vals()) {
+        activationKeys.add({ key = k; chainType = ct; var used = false; expiresAt = exp });
+      };
+    };
+
     for ((c, u) in stableWithdrawalCodes.vals()) {
       withdrawalCodes.add({ code = c; var used = u });
     };
@@ -72,30 +93,34 @@ persistent actor {
   };
 
   system func preupgrade() {
-    // Serialize buffers back to stable tuples
     let akBuf = Buffer.Buffer<(Text, Text, Bool)>(activationKeys.size());
+    let tkBuf = Buffer.Buffer<(Text, Text, Int)>(8);
     for (k in activationKeys.vals()) {
-      akBuf.add((k.key, k.chainType, k.used));
+      if (k.expiresAt == 0) {
+        akBuf.add((k.key, k.chainType, k.used));
+      } else {
+        tkBuf.add((k.key, k.chainType, k.expiresAt));
+      };
     };
     stableActivationKeys := Buffer.toArray(akBuf);
+    stableTempKeys := Buffer.toArray(tkBuf);
 
     let wcBuf = Buffer.Buffer<(Text, Bool)>(withdrawalCodes.size());
-    for (c in withdrawalCodes.vals()) {
-      wcBuf.add((c.code, c.used));
-    };
+    for (c in withdrawalCodes.vals()) { wcBuf.add((c.code, c.used)) };
     stableWithdrawalCodes := Buffer.toArray(wcBuf);
 
     let mwBuf = Buffer.Buffer<(Text, Text, Text)>(mockWallets.size());
-    for (w in mockWallets.vals()) {
-      mwBuf.add((w.address, w.chain, w.balance));
-    };
+    for (w in mockWallets.vals()) { mwBuf.add((w.address, w.chain, w.balance)) };
     stableMockWallets := Buffer.toArray(mwBuf);
   };
 
   system func postupgrade() {
-    activationKeys := Buffer.Buffer(stableActivationKeys.size() + 5);
+    activationKeys := Buffer.Buffer(stableActivationKeys.size() + stableTempKeys.size() + 5);
     for ((k, ct, u) in stableActivationKeys.vals()) {
-      activationKeys.add({ key = k; chainType = ct; var used = u });
+      activationKeys.add({ key = k; chainType = ct; var used = u; expiresAt = 0 });
+    };
+    for ((k, ct, exp) in stableTempKeys.vals()) {
+      activationKeys.add({ key = k; chainType = ct; var used = false; expiresAt = exp });
     };
     withdrawalCodes := Buffer.Buffer(stableWithdrawalCodes.size() + 5);
     for ((c, u) in stableWithdrawalCodes.vals()) {
@@ -111,17 +136,27 @@ persistent actor {
 
   public func addActivationKey(adminToken : Text, key : Text, chainType : Text) : async Bool {
     if (adminToken != ADMIN_TOKEN) return false;
-    activationKeys.add({ key = Text.toUppercase(key); chainType; var used = false });
+    activationKeys.add({ key = Text.toUppercase(key); chainType; var used = false; expiresAt = 0 });
     true
   };
 
   public func validateActivationKey(key : Text) : async { valid : Bool; chainType : Text; alreadyUsed : Bool } {
     let upper = Text.toUppercase(key);
+    let now = Time.now();
     let size = activationKeys.size();
     var i = 0;
     while (i < size) {
       let k = activationKeys.get(i);
       if (k.key == upper) {
+        // Expired temp key
+        if (k.expiresAt > 0 and now > k.expiresAt) {
+          return { valid = false; chainType = ""; alreadyUsed = false };
+        };
+        // Temp keys are multi-use within their window
+        if (k.expiresAt > 0) {
+          return { valid = true; chainType = k.chainType; alreadyUsed = false };
+        };
+        // Permanent keys are one-time use
         if (k.used) {
           return { valid = true; chainType = k.chainType; alreadyUsed = true };
         } else {
